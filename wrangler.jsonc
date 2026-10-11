@@ -3,7 +3,7 @@
   // Ce fichier est copie a la racine du build upstream par le workflow
   // avant `wrangler deploy` : les chemins relatifs sont donc resolus
   // depuis la racine upstream (./worker.js, ./dist).
-  "name": "bentopdf",
+  "name": "artpdf",
   "main": "./worker.js",
   // Date de compatibilite : ne pas reculer sans tester (runtime changes).
   "compatibility_date": "2026-10-11",

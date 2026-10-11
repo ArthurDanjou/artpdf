@@ -1,6 +1,6 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# bentopdf
+# artpdf
 
 Deploiement auto de [BentoPDF](https://github.com/alam00000/bentopdf) sur Cloudflare **Worker + Static Assets**, resynchronise avec upstream chaque jour.
 
@@ -25,7 +25,7 @@ Secrets requis (`Settings > Secrets and variables > Actions`) :
 | `CLOUDFLARE_API_TOKEN` | Dash Cloudflare > My Profile > API Tokens > Create Token > modele `Edit Cloudflare Workers` |
 | `CLOUDFLARE_ACCOUNT_ID` | Dash Cloudflare > Workers & Pages > Overview (colonne droite) |
 
-Premier deploy : `Actions > Deploy BentoPDF to Cloudflare Worker > Run workflow`. L'URL sera `https://bentopdf.<ton-compte>.workers.dev`. Si le nom `bentopdf` est pris, renomme `name` dans `wrangler.jsonc`.
+Premier deploy : `Actions > Deploy BentoPDF to Cloudflare Worker > Run workflow`. L'URL sera `https://artpdf.<ton-compte>.workers.dev`.
 
 Domaine custom : ajoute un `routes` dans `wrangler.jsonc`.
 

@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: bentopdf-deploy
+  group: artpdf-deploy
   cancel-in-progress: false
 
 jobs:
