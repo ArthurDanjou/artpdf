@@ -14,7 +14,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-
 const [upstreamDir, langsArg] = process.argv.slice(2);
 if (!upstreamDir || !langsArg) {
   console.error('Usage: node select-languages.mjs <upstreamDir> "en fr"');
@@ -51,6 +50,12 @@ for (const lang of available) {
 console.log(
   `[locales] gardees: ${wanted.join(", ")} (${available.length - wanted.length} supprimees)`
 );
+
+// Les tests upstream referencent toutes les langues en dur : tsc (lance par
+// le build) echouerait sur le type SupportedLanguage restreint. Ils ne sont
+// pas executes ni embarques dans dist, on les retire.
+rmSync(join(upstreamDir, "src", "tests"), { recursive: true, force: true });
+console.log("[tests] dossier src/tests retire (non shipped, tsc-safe)");
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const i18nPath = join(upstreamDir, "src", "js", "i18n", "i18n.ts");
