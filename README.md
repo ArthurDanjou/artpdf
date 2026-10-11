@@ -2,50 +2,65 @@
 
 # artpdf
 
-Deploiement auto de [BentoPDF](https://github.com/alam00000/bentopdf) sur Cloudflare **Worker + Static Assets**, resynchronise avec upstream chaque jour.
+Self-hosted [BentoPDF](https://github.com/alam00000/bentopdf) on Cloudflare **Workers + Static Assets**, automatically rebuilt from upstream every day.
 
-## Fonctionnement
+BentoPDF is a privacy-first, fully client-side PDF toolkit. This repo contains only the deployment wrapper: a scheduled workflow checks out the latest upstream release, builds it, and deploys it to your Cloudflare account. No fork syncing required.
 
-Le workflow `.github/workflows/deploy.yml` tourne chaque jour a 06:00 UTC (plus lancement manuel) :
+## How it works
 
-1. Checkout ce repo (`self`) pour la config de deploy.
-2. Checkout `alam00000/bentopdf@main` (`upstream`).
-3. `scripts/select-languages.mjs` restreint les langues UI (`LANGUAGES`, défaut `"en fr"`).
-4. Build avec `VITE_USE_CDN=true` (WASM via jsDelivr + fallback local).
-5. `scripts/prune-large-assets.mjs` exclut les fichiers >25 Mio (limite Cloudflare par fichier : fallbacks WASM locaux, le CDN prend le relais).
-6. `scripts/prepare-cloudflare.mjs` convertit `security-headers.conf` du build en `dist/_headers`, injecte la CSP dans `worker.js`, copie `wrangler.jsonc`.
+The `.github/workflows/deploy.yml` workflow runs daily at 06:00 UTC (and manually via `workflow_dispatch`):
+
+1. Checks out this repo (`self`) for the deploy configuration.
+2. Checks out `alam00000/bentopdf@main` into `upstream/` — always fresh, so upstream updates never overwrite anything here.
+3. `scripts/select-languages.mjs` trims the UI languages (`LANGUAGES`, default `"en fr"`).
+4. Builds with `VITE_USE_CDN=true` (large WASM modules load from jsDelivr CDN with local fallback).
+5. `scripts/prune-large-assets.mjs` drops files over 25 MiB from `dist` (per-file Cloudflare limit; the CDN covers them online).
+6. `scripts/prepare-cloudflare.mjs` converts the build's `security-headers.conf` into `dist/_headers`, injects the current CSP into `worker.js`, and stages `wrangler.jsonc`.
 7. `wrangler deploy`.
 
-Le `worker.js` ajoute les URLs propres (`/merge-pdf` vers `/merge-pdf.html`, `/fr/` vers `/fr/index.html`), la page 404 et les headers d'isolation (`COOP/COEP`, requis pour SharedArrayBuffer) + securite.
+The `worker.js` edge worker adds clean URLs (`/merge-pdf` → `/merge-pdf.html`, `/fr/` → `/fr/index.html`), serves the nearest `404.html`, and sets isolation headers (`COOP/COEP`, required for SharedArrayBuffer) plus security headers.
+
+## Setup
+
+**1. Get your Cloudflare credentials**
+
+| Secret | Where to find it |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Dash → My Profile → API Tokens → Create Token → `Edit Cloudflare Workers` template |
+| `CLOUDFLARE_ACCOUNT_ID` | Dash → Workers & Pages → Overview (right column) |
+
+**2. Add them to this repo**
+
+Repo → Settings → Secrets and variables → Actions → New repository secret. Add both secrets above.
+
+**3. Run the first deploy**
+
+Repo → Actions → Deploy BentoPDF to Cloudflare Worker → Run workflow. The build takes several minutes (large Vite project). Your instance will be live at `https://artpdf.<your-account>.workers.dev`.
+
+Subsequent deploys run automatically every day.
 
 ## Configuration
 
-Secrets requis (`Settings > Secrets and variables > Actions`) :
+| Setting | Where | Default | Effect |
+| --- | --- | --- | --- |
+| `LANGUAGES` | top of `deploy.yml` | `"en fr"` | UI languages included in the build. Upstream ships ~22; trimming shrinks `dist` and build time. `"en"` is always kept (fallback). Fails loudly if upstream restructures its i18n files. |
+| Custom domain | `wrangler.jsonc` | — | Add a `routes` entry, e.g. `{ "pattern": "pdf.example.com/*", "zone_name": "example.com" }` |
+| Worker name | `wrangler.jsonc` → `name` | `"artpdf"` | Also sets the `artpdf.<account>.workers.dev` subdomain |
 
-| Secret | Ou le trouver |
+## Files
+
+| File | Role |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Dash Cloudflare > My Profile > API Tokens > Create Token > modele `Edit Cloudflare Workers` |
-| `CLOUDFLARE_ACCOUNT_ID` | Dash Cloudflare > Workers & Pages > Overview (colonne droite) |
+| `wrangler.jsonc` | Worker + Static Assets config (copied to the build root before deploy) |
+| `worker.js` | Clean-URL fallback, 404 handling, headers (`__APP_CSP__` is injected at deploy time) |
+| `scripts/select-languages.mjs` | Trims UI languages before the build |
+| `scripts/prune-large-assets.mjs` | Drops files over 25 MiB from the deploy (Cloudflare limit) |
+| `scripts/prepare-cloudflare.mjs` | Bridges the upstream build output to Cloudflare files |
+| `.github/workflows/deploy.yml` | Daily cron + deploy |
 
-Premier deploy : `Actions > Deploy BentoPDF to Cloudflare Worker > Run workflow`. L'URL sera `https://artpdf.<ton-compte>.workers.dev`.
+## Notes
 
-Domaine custom : ajoute un `routes` dans `wrangler.jsonc`.
-
-## Fichiers
-
-| Fichier | Role |
-| --- | --- |
-| `wrangler.jsonc` | Config Worker + Static Assets |
-| `worker.js` | Fallback URLs propres, 404, headers (`__APP_CSP__` injecte au deploy) |
-| `scripts/prepare-cloudflare.mjs` | Pont build upstream vers fichiers Cloudflare |
-| `scripts/select-languages.mjs` | Restreint les langues UI avant le build (voir `LANGUAGES`) |
-| `scripts/prune-large-assets.mjs` | Exclut les fichiers >25 Mio du deploy (limite Cloudflare) |
-| `.github/workflows/deploy.yml` | Cron quotidien + deploy |
-
-## Langues
-
-`LANGUAGES` (en haut du workflow, défaut `"en fr"`) choisit les langues UI
-incluses. Upstream en génère ~22 : les pruner réduit fortement la taille de
-`dist` et le temps de build. Le script supprime les autres dossiers
-`public/locales` et restreint le sélecteur de langue ; il échoue
-explicitement si upstream restructure ses fichiers i18n.
+- **No state on the edge.** The worker is stateless: no KV, D1, R2, or Durable Objects. All PDF processing happens in the visitor's browser.
+- **Large files stay on the CDN.** Local LibreOffice WASM fallbacks exceed the 25 MiB per-file limit and are excluded from the deploy; Office conversions load them from jsDelivr instead. Fully offline/air-gapped use is not covered by this setup.
+- **Removed languages degrade gracefully.** The language switcher only lists built languages; stale `/xx/` URLs serve the 404 page, and missing locale JSON falls back to English in-app.
+- **License.** BentoPDF itself is [AGPL-3.0](https://github.com/alam00000/bentopdf/blob/main/LICENSE). This repo ships its build unmodified; check the upstream license if you customize the source.
