@@ -24,18 +24,18 @@ jobs:
     timeout-minutes: 30
     steps:
       # Config de deploy (ce repo) : wrangler.jsonc, worker.js, script.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: self
 
       # Code source upstream, toujours a jour a chaque run.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: alam00000/bentopdf
           ref: main
           path: upstream
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
