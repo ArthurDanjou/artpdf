@@ -48,6 +48,9 @@ jobs:
         working-directory: upstream
         run: npm ci && VITE_USE_CDN=true npm run build
 
+      - name: Prune oversized assets
+        run: node self/scripts/prune-large-assets.mjs upstream/dist 25
+
       - name: Prepare Cloudflare files
         run: node self/scripts/prepare-cloudflare.mjs upstream self/worker.js self/wrangler.jsonc
 

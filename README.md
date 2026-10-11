@@ -12,8 +12,9 @@ Le workflow `.github/workflows/deploy.yml` tourne chaque jour a 06:00 UTC (plus 
 2. Checkout `alam00000/bentopdf@main` (`upstream`).
 3. `scripts/select-languages.mjs` restreint les langues UI (`LANGUAGES`, défaut `"en fr"`).
 4. Build avec `VITE_USE_CDN=true` (WASM via jsDelivr + fallback local).
-5. `scripts/prepare-cloudflare.mjs` convertit `security-headers.conf` du build en `dist/_headers`, injecte la CSP dans `worker.js`, copie `wrangler.jsonc`.
-6. `wrangler deploy`.
+5. `scripts/prune-large-assets.mjs` exclut les fichiers >25 Mio (limite Cloudflare par fichier : fallbacks WASM locaux, le CDN prend le relais).
+6. `scripts/prepare-cloudflare.mjs` convertit `security-headers.conf` du build en `dist/_headers`, injecte la CSP dans `worker.js`, copie `wrangler.jsonc`.
+7. `wrangler deploy`.
 
 Le `worker.js` ajoute les URLs propres (`/merge-pdf` vers `/merge-pdf.html`, `/fr/` vers `/fr/index.html`), la page 404 et les headers d'isolation (`COOP/COEP`, requis pour SharedArrayBuffer) + securite.
 
@@ -38,6 +39,7 @@ Domaine custom : ajoute un `routes` dans `wrangler.jsonc`.
 | `worker.js` | Fallback URLs propres, 404, headers (`__APP_CSP__` injecte au deploy) |
 | `scripts/prepare-cloudflare.mjs` | Pont build upstream vers fichiers Cloudflare |
 | `scripts/select-languages.mjs` | Restreint les langues UI avant le build (voir `LANGUAGES`) |
+| `scripts/prune-large-assets.mjs` | Exclut les fichiers >25 Mio du deploy (limite Cloudflare) |
 | `.github/workflows/deploy.yml` | Cron quotidien + deploy |
 
 ## Langues
