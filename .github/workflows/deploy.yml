@@ -1,0 +1,50 @@
+name: Deploy BentoPDF to Cloudflare Worker
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bentopdf-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Config de deploy (ce repo) : wrangler.jsonc, worker.js, script.
+      - uses: actions/checkout@v4
+        with:
+          path: self
+
+      # Code source upstream, toujours a jour a chaque run.
+      - uses: actions/checkout@v4
+        with:
+          repository: alam00000/bentopdf
+          ref: main
+          path: upstream
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: upstream/package-lock.json
+
+      - name: Build upstream
+        working-directory: upstream
+        run: npm ci && VITE_USE_CDN=true npm run build
+
+      - name: Prepare Cloudflare files
+        run: node self/scripts/prepare-cloudflare.mjs upstream self/worker.js self/wrangler.jsonc
+
+      - name: Deploy Worker
+        working-directory: upstream
+        run: npx -y wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
