@@ -13,7 +13,7 @@ The `.github/workflows/deploy.yml` workflow runs daily at 06:00 UTC (and manuall
 1. Checks out this repo (`self`) for the deploy configuration.
 2. Checks out `alam00000/bentopdf@main` into `upstream/` — always fresh, so upstream updates never overwrite anything here.
 3. `scripts/select-languages.mjs` trims the UI languages (`LANGUAGES`, default `"en fr"`).
-4. Builds with `VITE_USE_CDN=true` (large WASM modules load from jsDelivr CDN with local fallback).
+4. Builds with `VITE_USE_CDN=true` (large WASM modules load from jsDelivr CDN with local fallback), `VITE_DEFAULT_LANGUAGE=fr`, and `SIMPLE_MODE=true` (homepage reduced to the tools grid, no marketing pages).
 5. `scripts/prune-large-assets.mjs` drops files over 25 MiB from `dist` (per-file Cloudflare limit; the CDN covers them online).
 6. `scripts/prepare-cloudflare.mjs` converts the build's `security-headers.conf` into `dist/_headers`, injects the current CSP into `worker.js`, and stages `wrangler.jsonc`.
 7. `wrangler deploy`.
