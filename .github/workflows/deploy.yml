@@ -46,7 +46,7 @@ jobs:
 
       - name: Build upstream
         working-directory: upstream
-        run: npm ci && VITE_USE_CDN=true npm run build
+        run: npm ci && VITE_USE_CDN=true VITE_DEFAULT_LANGUAGE=fr npm run build
 
       - name: Prune oversized assets
         run: node self/scripts/prune-large-assets.mjs upstream/dist 25
