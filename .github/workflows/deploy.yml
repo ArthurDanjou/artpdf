@@ -5,6 +5,12 @@ on:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+# Langues UI incluses dans le build (separees par des espaces).
+# "en" est toujours inclus (fallback). Re-applique a chaque run
+# sur un checkout frais d'upstream : les maj upstream n'ecrasent rien.
+env:
+  LANGUAGES: "en fr"
+
 permissions:
   contents: read
 
@@ -34,6 +40,9 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: upstream/package-lock.json
+
+      - name: Select languages
+        run: node self/scripts/select-languages.mjs upstream "$LANGUAGES"
 
       - name: Build upstream
         working-directory: upstream
